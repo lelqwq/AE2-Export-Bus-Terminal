@@ -1,16 +1,18 @@
-# Build status — 0.1.1 — 2026-10-25
+# Build status — 0.1.2 — 2026-10-25
 
 - Target: GTNH 2.8.4 / Minecraft 1.7.10 / Forge 10.13.4.1614 / AE2 rv3-beta-695-GTNH.
-- Pre-change 0.1.0 source pushed to GitHub: 36c7efdccae7317ee8894e81a3e87ed850288f37.
+- Fluid integration: AE2 Fluid Crafting 1.4.120-gtnh, already included in GTNH 2.8.4.
 - `gradlew.bat test build`: PASS.
-- 14 JUnit tests: PASS (0 failures, 0 errors).
-- New coverage: persistent network ID binding/lookup/NBT reload, valid network ID zero, legacy/corrupt ID detection, full Pinyin, initials, mixed queries, alternate readings, formatting codes.
-- Existing packet, face-bounds and locale tests: PASS.
+- 19 JUnit tests: PASS (0 failures, 0 errors).
+- New coverage: actual AE2FC export/import class distinction; fluid display-packet NBT name/amount/variant preservation; malformed/empty filter handling; fluid names/Pinyin/initials; bus-type flag packet roundtrip.
+- Existing network identity, item search, locale, face bounds and packet tests: PASS.
 - Spotless formatting and Checkstyle: PASS.
-- Production JAR pinyin verification with an isolated classloader and no external dependencies: 8 cases PASS.
-- Embedded PinIn/Fastutil packages relocated into the mod namespace; dictionary and licenses included: PASS.
-- Reobfuscated production JAR generated, Java 8 bytecode (major 52): PASS.
+- Production JAR isolated pinyin checks without external libraries: 11 cases PASS, including fluid names.
+- Production JAR includes fluid integration classes, dictionary and license resources; Java 8 class version 52: PASS.
+- No AE2, AE2FC, Minecraft or test classes bundled: PASS.
 
-Behavior: the tool now stores AE2's persistent grid-storage ID instead of a cable position or dimension. Every query still checks the current network's BUILD permission. Legacy tools migrate once through their loaded old anchor or can be rebound to any node in the desired network. No chunks or dimensions are force-loaded.
+The list now includes both item and AE2FC fluid export buses, with type labels, real fluid icons/colors, localized fluid names and fluid registry-name search. Both reuse the existing network identity, permissions and face-location highlighting. Fluid filters are copied for display without modifying server-side configurations.
 
-Not yet performed by the agent: in-game cross-dimension/quantum-bridge, legacy-tool migration, GUI and multiplayer acceptance in the user's full GTNH instance. A fully unloaded or dissolved/reformed network may need loading or rebinding. See TESTING.md.
+The packet layout includes a new fluid-bus flag; update client and server together to 0.1.2 and remove the previous JAR. Existing tool bindings remain usable.
+
+Not performed by the agent: in-game rendering and fluid-bus/multiplayer acceptance in the user's full GTNH instance. See TESTING.md steps 15-17 for the fluid checks.

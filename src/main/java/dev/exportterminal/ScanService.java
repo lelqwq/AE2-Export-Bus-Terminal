@@ -31,6 +31,9 @@ import appeng.api.parts.IPartHost;
 import appeng.api.parts.SelectedPart;
 import appeng.core.worlddata.WorldData;
 import appeng.parts.automation.PartExportBus;
+import appeng.parts.automation.PartUpgradeable;
+import cpw.mods.fml.common.Loader;
+import dev.exportterminal.compat.FluidBusSupport;
 
 public final class ScanService {
 
@@ -141,11 +144,12 @@ public final class ScanService {
         if (tag.hasKey("LastScan") && elapsed >= 0 && elapsed < 20) return;
         tag.setLong("LastScan", now);
         List<BusEntry> entries = new ArrayList<>();
-        Set<PartExportBus> seen = Collections.newSetFromMap(new IdentityHashMap<PartExportBus, Boolean>());
+        Set<PartUpgradeable> seen = Collections.newSetFromMap(new IdentityHashMap<PartUpgradeable, Boolean>());
         for (Class<? extends IGridHost> type : grid.getMachinesClasses()) {
-            if (!PartExportBus.class.isAssignableFrom(type)) continue;
+            boolean fluidBus = Loader.isModLoaded("ae2fc") && FluidBusSupport.isExportBus(type);
+            if (!PartExportBus.class.isAssignableFrom(type) && !fluidBus) continue;
             for (IGridNode node : grid.getMachines(type)) {
-                PartExportBus bus = (PartExportBus) node.getMachine();
+                PartUpgradeable bus = (PartUpgradeable) node.getMachine();
                 if (!seen.add(bus) || bus.getHost() == null) continue;
                 TileEntity tile = bus.getHost()
                     .getTile();
@@ -161,17 +165,18 @@ public final class ScanService {
                 entry.side = bus.getSide()
                     .ordinal();
                 entry.online = node.isActive();
+                entry.fluidBus = fluidBus;
                 entry.enabledSlots = Math.min(9, 1 + bus.getInstalledUpgrades(Upgrades.CAPACITY) * 4);
                 entry.craftingCard = bus.getInstalledUpgrades(Upgrades.CRAFTING) > 0;
                 entry.redstoneCard = bus.getInstalledUpgrades(Upgrades.REDSTONE) > 0;
                 entry.redstoneMode = bus.getRSMode()
                     .name();
-                if (bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
+                if (!fluidBus && bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
                     entry.fuzzyMode = bus.getConfigManager()
                         .getSetting(Settings.FUZZY_MODE)
                         .name();
                 }
-                entry.oreFilter = bus.getFilter();
+                if (!fluidBus) entry.oreFilter = ((PartExportBus) bus).getFilter();
                 IInventory filters = bus.getInventoryByName("config");
                 for (int i = 0; i < Math.min(9, filters.getSizeInventory()); i++) {
                     ItemStack filter = filters.getStackInSlot(i);

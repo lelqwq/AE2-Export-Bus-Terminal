@@ -1,4 +1,13 @@
 repositories {
+    ivy {
+        name = "AE2FC GitHub Releases"
+        url = "https://github.com/GTNewHorizons/AE2FluidCraft-Rework/releases/download"
+        patternLayout {
+            artifact("[revision]/ae2fc-[revision](-[classifier]).[ext]")
+        }
+        metadataSources { artifact() }
+        content { includeModule("com.github.GTNewHorizons", "AE2FluidCraft-Rework") }
+    }
     maven {
         name = "JitPack"
         url = "https://jitpack.io"

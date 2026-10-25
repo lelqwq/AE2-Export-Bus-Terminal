@@ -59,6 +59,7 @@ public class TerminalNetworkTest {
             assertEquals(5, copy.side);
             assertEquals(5, copy.enabledSlots);
             assertTrue(copy.online);
+            assertFalse(copy.fluidBus);
             assertTrue(copy.craftingCard);
             assertTrue(copy.redstoneCard);
             assertEquals(entry.redstoneMode, copy.redstoneMode);
@@ -83,8 +84,29 @@ public class TerminalNetworkTest {
                 .writeInt(0)
                 .writeByte(6)
                 .writeBoolean(false)
+                .writeBoolean(false)
                 .writeByte(9);
             new TerminalNetwork.Result().fromBytes(wire);
+        } finally {
+            wire.release();
+        }
+    }
+
+    @Test
+    public void preservesFluidBusKindForRenderingAndSearch() {
+        BusEntry entry = new BusEntry();
+        entry.fluidBus = true;
+        entry.enabledSlots = 9;
+        entry.side = 3;
+        ByteBuf wire = Unpooled.buffer();
+        try {
+            new TerminalNetwork.Result(44, entry).toBytes(wire);
+            TerminalNetwork.Result copy = new TerminalNetwork.Result();
+            copy.fromBytes(wire);
+            assertTrue(copy.entry.fluidBus);
+            assertEquals(3, copy.entry.side);
+            assertEquals(9, copy.entry.enabledSlots);
+            assertFalse(wire.isReadable());
         } finally {
             wire.release();
         }

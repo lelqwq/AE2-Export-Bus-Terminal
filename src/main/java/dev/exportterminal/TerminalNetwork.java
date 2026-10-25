@@ -94,6 +94,7 @@ public final class TerminalNetwork {
             buf.writeInt(entry.z);
             buf.writeByte(entry.side);
             buf.writeBoolean(entry.online);
+            buf.writeBoolean(entry.fluidBus);
             buf.writeByte(entry.enabledSlots);
             buf.writeBoolean(entry.craftingCard);
             buf.writeBoolean(entry.redstoneCard);
@@ -118,6 +119,7 @@ public final class TerminalNetwork {
             entry.z = buf.readInt();
             entry.side = buf.readUnsignedByte();
             entry.online = buf.readBoolean();
+            entry.fluidBus = buf.readBoolean();
             entry.enabledSlots = buf.readUnsignedByte();
             if (entry.side > 5 || entry.enabledSlots < 1 || entry.enabledSlots > 9) {
                 throw new IllegalArgumentException("Invalid bus side or capacity");

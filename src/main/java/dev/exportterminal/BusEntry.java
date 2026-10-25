@@ -10,6 +10,7 @@ public class BusEntry {
     public int z;
     public int side;
     public boolean online;
+    public boolean fluidBus;
     public int enabledSlots;
     public boolean craftingCard;
     public boolean redstoneCard;

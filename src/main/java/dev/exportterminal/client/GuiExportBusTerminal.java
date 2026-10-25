@@ -7,15 +7,19 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.renderer.RenderHelper;
+import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.IIcon;
 import net.minecraft.util.StatCollector;
+import net.minecraftforge.fluids.FluidStack;
 
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
 
 import dev.exportterminal.BusEntry;
+import dev.exportterminal.FluidFilters;
 import dev.exportterminal.TerminalNetwork;
 import dev.exportterminal.util.ItemSearch;
 
@@ -51,6 +55,8 @@ public class GuiExportBusTerminal extends GuiScreen {
         entries.add(entry);
         StringBuilder text = new StringBuilder(entry.oreFilter);
         text.append(' ')
+            .append(tr(entry.fluidBus ? "fluidbus" : "itembus"));
+        text.append(' ')
             .append(entry.dimension)
             .append(' ')
             .append(entry.x)
@@ -64,6 +70,17 @@ public class GuiExportBusTerminal extends GuiScreen {
                     .append(stack.getDisplayName())
                     .append(' ')
                     .append(Item.itemRegistry.getNameForObject(stack.getItem()));
+                if (entry.fluidBus) {
+                    FluidStack fluid = FluidFilters.fromPacket(stack);
+                    if (fluid != null) {
+                        text.append(' ')
+                            .append(fluid.getLocalizedName())
+                            .append(' ')
+                            .append(
+                                fluid.getFluid()
+                                    .getName());
+                    }
+                }
             }
         }
         String searchable = text.toString();
@@ -135,7 +152,9 @@ public class GuiExportBusTerminal extends GuiScreen {
                 && mouseY >= y
                 && mouseY < y + ROW_HEIGHT - 2;
             drawRect(left + 7, y, left + panelWidth - 7, y + ROW_HEIGHT - 2, hovered ? 0xFF344954 : 0xFF25343F);
-            String location = "D" + entry.dimension
+            String location = "[" + tr(entry.fluidBus ? "fluidbus" : "itembus")
+                + "] D"
+                + entry.dimension
                 + "  "
                 + entry.x
                 + ", "
@@ -156,9 +175,15 @@ public class GuiExportBusTerminal extends GuiScreen {
                 drawRect(x - 1, y + 20, x + 17, y + 38, 0xFF14212A);
                 ItemStack stack = entry.filters[slot];
                 if (stack != null) {
-                    RenderHelper.enableGUIStandardItemLighting();
-                    itemRender.renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), stack, x, y + 21);
-                    RenderHelper.disableStandardItemLighting();
+                    FluidStack fluid = entry.fluidBus ? FluidFilters.fromPacket(stack) : null;
+                    if (fluid != null) {
+                        drawFluid(fluid, x, y + 21);
+                    } else {
+                        RenderHelper.enableGUIStandardItemLighting();
+                        itemRender
+                            .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), stack, x, y + 21);
+                        RenderHelper.disableStandardItemLighting();
+                    }
                 }
                 if (slot >= entry.enabledSlots) {
                     GL11.glDisable(GL11.GL_LIGHTING);
@@ -209,7 +234,12 @@ public class GuiExportBusTerminal extends GuiScreen {
             List<String> tooltip = new ArrayList<>();
             if (hoveredStack != null) {
                 tooltip.addAll(hoveredStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips));
+                FluidStack fluid = hoveredEntry.fluidBus ? FluidFilters.fromPacket(hoveredStack) : null;
+                if (fluid != null) tooltip.add(
+                    "\u00a77" + fluid.getFluid()
+                        .getName());
             }
+            tooltip.add("\u00a77" + tr(hoveredEntry.fluidBus ? "fluidbus" : "itembus"));
             if (hoveredSlot >= hoveredEntry.enabledSlots) tooltip.add("\u00a7c" + tr("disabledslot"));
             tooltip.add(
                 "\u00a77" + tr("redstone")
@@ -234,6 +264,20 @@ public class GuiExportBusTerminal extends GuiScreen {
             BusHighlight.select(visible.get(index));
             mc.displayGuiScreen(null);
         }
+    }
+
+    private void drawFluid(FluidStack fluid, int x, int y) {
+        IIcon icon = fluid.getFluid()
+            .getStillIcon();
+        if (icon == null) icon = mc.getTextureMapBlocks()
+            .getAtlasSprite("missingno");
+        int color = fluid.getFluid()
+            .getColor(fluid);
+        mc.getTextureManager()
+            .bindTexture(TextureMap.locationBlocksTexture);
+        GL11.glColor4f((color >> 16 & 255) / 255.0F, (color >> 8 & 255) / 255.0F, (color & 255) / 255.0F, 1.0F);
+        drawTexturedModelRectFromIcon(x, y, icon, 16, 16);
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     @Override

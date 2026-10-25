@@ -1,5 +1,7 @@
 dependencies {
     implementation("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-695-GTNH:dev") { transitive = false }
+    devOnlyNonPublishable("com.github.GTNewHorizons:AE2FluidCraft-Rework:1.4.120-gtnh:dev") { transitive = false }
     shadowImplementation("com.github.Towdium:PinIn:1.6.0")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.github.GTNewHorizons:AE2FluidCraft-Rework:1.4.120-gtnh:dev") { transitive = false }
 }
