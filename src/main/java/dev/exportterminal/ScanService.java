@@ -16,6 +16,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.util.ForgeDirection;
 
 import appeng.api.config.SecurityPermissions;
@@ -28,6 +29,7 @@ import appeng.api.networking.security.ISecurityGrid;
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.SelectedPart;
+import appeng.core.worlddata.WorldData;
 import appeng.parts.automation.PartExportBus;
 
 public final class ScanService {
@@ -40,19 +42,16 @@ public final class ScanService {
     public static void bindAndScan(EntityPlayerMP player, ItemStack stack, int x, int y, int z, int clickedSide,
         float hitX, float hitY, float hitZ) {
         TileEntity tile = player.worldObj.getTileEntity(x, y, z);
-        int partSide = -1;
         IGridNode node = null;
         if (tile instanceof IPartHost) {
             IPartHost host = (IPartHost) tile;
             SelectedPart selected = host.selectPart(Vec3.createVectorHelper(hitX, hitY, hitZ));
             if (selected.part != null && selected.part.getGridNode() != null) {
                 node = selected.part.getGridNode();
-                partSide = selected.side.ordinal();
             } else {
                 IPart cable = host.getPart(ForgeDirection.UNKNOWN);
                 if (cable != null) {
                     node = cable.getGridNode();
-                    partSide = ForgeDirection.UNKNOWN.ordinal();
                 }
             }
         }
@@ -60,18 +59,17 @@ public final class ScanService {
             node = ((IGridHost) tile).getGridNode(ForgeDirection.getOrientation(clickedSide));
             if (node == null) node = ((IGridHost) tile).getGridNode(ForgeDirection.UNKNOWN);
         }
-        if (!canRead(player, node)) return;
+        IGrid grid = node == null ? null : node.getGrid();
+        if (!canRead(player, grid)) return;
         if (!stack.hasTagCompound()) stack.setTagCompound(new NBTTagCompound());
         NBTTagCompound binding = new NBTTagCompound();
-        binding.setInteger("dim", player.dimension);
-        binding.setInteger("x", x);
-        binding.setInteger("y", y);
-        binding.setInteger("z", z);
-        binding.setInteger("part", partSide);
-        binding.setInteger("face", clickedSide);
+        if (!NetworkBinding.bind(binding, grid)) {
+            tell(player, "ae2exportterminal.error.missing");
+            return;
+        }
         stack.getTagCompound()
             .setTag(BINDING, binding);
-        scan(player, stack, node);
+        scan(player, stack, grid);
     }
 
     public static void scanBound(EntityPlayerMP player) {
@@ -84,19 +82,32 @@ public final class ScanService {
         }
         NBTTagCompound binding = stack.getTagCompound()
             .getCompoundTag(BINDING);
-        if (binding.getInteger("dim") != player.dimension) {
-            tell(player, "ae2exportterminal.error.dimension");
+        IGrid grid;
+        if (NetworkBinding.hasNetwork(binding)) {
+            grid = NetworkBinding.resolve(
+                binding,
+                WorldData.instance()
+                    .storageData());
+        } else {
+            // Migrate 0.1.0 tools through their old anchor once, even from another dimension.
+            IGridNode legacyNode = findLegacyNode(binding);
+            grid = legacyNode == null ? null : legacyNode.getGrid();
+        }
+        if (!canRead(player, grid)) return;
+        if (!NetworkBinding.hasNetwork(binding) && !NetworkBinding.bind(binding, grid)) {
+            tell(player, "ae2exportterminal.error.missing");
             return;
         }
+        scan(player, stack, grid);
+    }
+
+    private static IGridNode findLegacyNode(NBTTagCompound binding) {
         int x = binding.getInteger("x");
         int y = binding.getInteger("y");
         int z = binding.getInteger("z");
-        World world = player.worldObj;
-        if (!world.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4)) {
-            tell(player, "ae2exportterminal.error.unloaded");
-            return;
-        }
+        World world = DimensionManager.getWorld(binding.getInteger("dim"));
+        if (world == null || !world.getChunkProvider()
+            .chunkExists(x >> 4, z >> 4)) return null;
         TileEntity tile = world.getTileEntity(x, y, z);
         IGridNode node = null;
         int side = binding.getInteger("part");
@@ -107,16 +118,15 @@ public final class ScanService {
             node = ((IGridHost) tile).getGridNode(ForgeDirection.getOrientation(binding.getInteger("face")));
             if (node == null) node = ((IGridHost) tile).getGridNode(ForgeDirection.UNKNOWN);
         }
-        if (canRead(player, node)) scan(player, stack, node);
+        return node;
     }
 
-    private static boolean canRead(EntityPlayerMP player, IGridNode node) {
-        if (node == null || node.getGrid() == null) {
+    private static boolean canRead(EntityPlayerMP player, IGrid grid) {
+        if (grid == null || grid.isEmpty()) {
             tell(player, "ae2exportterminal.error.missing");
             return false;
         }
-        ISecurityGrid security = node.getGrid()
-            .getCache(ISecurityGrid.class);
+        ISecurityGrid security = grid.getCache(ISecurityGrid.class);
         if (security == null || !security.hasPermission(player, SecurityPermissions.BUILD)) {
             tell(player, "ae2exportterminal.error.permission");
             return false;
@@ -124,13 +134,12 @@ public final class ScanService {
         return true;
     }
 
-    private static void scan(final EntityPlayerMP player, ItemStack stack, IGridNode anchor) {
+    private static void scan(final EntityPlayerMP player, ItemStack stack, IGrid grid) {
         NBTTagCompound tag = stack.getTagCompound();
         long now = player.worldObj.getTotalWorldTime();
         long elapsed = now - tag.getLong("LastScan");
         if (tag.hasKey("LastScan") && elapsed >= 0 && elapsed < 20) return;
         tag.setLong("LastScan", now);
-        IGrid grid = anchor.getGrid();
         List<BusEntry> entries = new ArrayList<>();
         Set<PartExportBus> seen = Collections.newSetFromMap(new IdentityHashMap<PartExportBus, Boolean>());
         for (Class<? extends IGridHost> type : grid.getMachinesClasses()) {

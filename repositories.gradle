@@ -1,0 +1,9 @@
+repositories {
+    maven {
+        name = "JitPack"
+        url = "https://jitpack.io"
+        content {
+            includeGroup("com.github.Towdium")
+        }
+    }
+}
