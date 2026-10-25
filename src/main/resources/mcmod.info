@@ -1,0 +1,12 @@
+[
+  {
+    "modid": "ae2exportterminal",
+    "name": "AE2 Export Bus Terminal",
+    "description": "Read-only ME Export Bus configuration search and exact in-world bus-face highlighting for GTNH 2.8.4.",
+    "version": "0.1.0",
+    "mcversion": "1.7.10",
+    "authorList": ["AE2 Export Bus Terminal contributors"],
+    "credits": "Built against the GTNewHorizons fork of Applied Energistics 2.",
+    "dependencies": ["appliedenergistics2"]
+  }
+]
