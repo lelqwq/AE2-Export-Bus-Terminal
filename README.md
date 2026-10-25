@@ -11,9 +11,9 @@
 | GTNH | 2.8.4 |
 | Applied Energistics 2 GTNH | rv3-beta-695-GTNH（严格锁定） |
 | AE2 Fluid Crafting（流体总线支持） | 1.4.120-gtnh（GTNH 2.8.4 自带；可选集成） |
-| 本模组 | 0.1.3 |
+| 本模组 | 1.0.0 |
 
-将 `build/libs/ae2-export-bus-terminal-0.1.3.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
+将 `build/libs/ae2-export-bus-terminal-1.0.0.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
 
 无需替换 AE2，无需新增前置模组，无 Mixin 或 Coremod。拼音库 PinIn 及其必要依赖已内置并重定位，避免与整合包中的同名库冲突；AE2 和 Minecraft 不会打包进成品。
 
@@ -60,7 +60,7 @@ Gradle 使用 JDK 17+ 运行（建议 JDK 25），插件会选择/下载 Java 8 
 
 自动化测试覆盖中文/全拼/首字母/混合搜索、多音字、格式码、系统语言差异、网络编号持久化与解析、旧绑定标识判定、六个安装面的定位边界、快照协议、真实 AE2FC 输入/输出总线类型区分、流体配置包解析及流体名称搜索，以及名称排序的维度优先级、多配置取名、空配置置后与同名稳定顺序。完整游戏验证步骤见 `TESTING.md`。
 
-尚未在真实 GTNH 客户端/专用服务器中完成界面、实际物品 NBT 同步及多人交互验收；JUnit 无法代替 Forge 完整启动环境。
+用户已在自己的 GTNH 环境中测试并确认当前功能可用，发布为 1.0.0。未单独记录专用服务器、多人交互及全部验收步骤的逐项结果；JUnit 无法代替 Forge 完整启动环境。
 
 ## 上游参考
 
