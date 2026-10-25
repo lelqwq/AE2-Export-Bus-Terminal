@@ -1,7 +1,9 @@
 package dev.exportterminal.client;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -21,11 +23,13 @@ import org.lwjgl.opengl.GL11;
 import dev.exportterminal.BusEntry;
 import dev.exportterminal.FluidFilters;
 import dev.exportterminal.TerminalNetwork;
+import dev.exportterminal.util.BusNameOrder;
 import dev.exportterminal.util.ItemSearch;
 
 public class GuiExportBusTerminal extends GuiScreen {
 
     private static final int ROW_HEIGHT = 46;
+    private static boolean sortByName = true;
     private final List<BusEntry> entries = new ArrayList<>();
     private final List<String> searchTexts = new ArrayList<>();
     private final List<BusEntry> visible = new ArrayList<>();
@@ -40,6 +44,8 @@ public class GuiExportBusTerminal extends GuiScreen {
     private int scroll;
     private int refreshTicks;
     private String query = "";
+    private BusNameOrder nameOrder;
+    private boolean sortDirty;
 
     public void begin(int session, int total) {
         this.session = session;
@@ -47,12 +53,17 @@ public class GuiExportBusTerminal extends GuiScreen {
         entries.clear();
         searchTexts.clear();
         visible.clear();
+        nameOrder = new BusNameOrder(
+            mc.thePlayer.dimension,
+            Locale.forLanguageTag(mc.gameSettings.language.replace('_', '-')));
+        sortDirty = false;
         scroll = 0;
     }
 
     public void accept(int session, BusEntry entry) {
         if (this.session != session || entries.size() >= expected) return;
         entries.add(entry);
+        List<String> configuredNames = new ArrayList<>();
         StringBuilder text = new StringBuilder(entry.oreFilter);
         text.append(' ')
             .append(tr(entry.fluidBus ? "fluidbus" : "itembus"));
@@ -66,6 +77,9 @@ public class GuiExportBusTerminal extends GuiScreen {
             .append(entry.z);
         for (ItemStack stack : entry.filters) {
             if (stack != null) {
+                FluidStack configuredFluid = entry.fluidBus ? FluidFilters.fromPacket(stack) : null;
+                configuredNames
+                    .add(configuredFluid == null ? stack.getDisplayName() : configuredFluid.getLocalizedName());
                 text.append(' ')
                     .append(stack.getDisplayName())
                     .append(' ')
@@ -85,7 +99,9 @@ public class GuiExportBusTerminal extends GuiScreen {
         }
         String searchable = text.toString();
         searchTexts.add(searchable);
+        nameOrder.setNames(entry, configuredNames);
         if (ItemSearch.matches(searchable, query)) visible.add(entry);
+        sortDirty = true;
     }
 
     @Override
@@ -103,6 +119,14 @@ public class GuiExportBusTerminal extends GuiScreen {
         buttonList.clear();
         buttonList.add(new GuiButton(0, left + panelWidth - 184, top + 27, 68, 20, tr("refresh")));
         buttonList.add(new GuiButton(1, left + panelWidth - 112, top + 27, 103, 20, tr("clear")));
+        buttonList.add(
+            new GuiButton(
+                2,
+                left + panelWidth - 164,
+                top + 5,
+                155,
+                20,
+                tr(sortByName ? "sort.name" : "sort.distance")));
     }
 
     private void filter() {
@@ -112,10 +136,17 @@ public class GuiExportBusTerminal extends GuiScreen {
             if (ItemSearch.matches(searchTexts.get(i), query)) visible.add(entries.get(i));
         }
         scroll = 0;
+        sortVisible();
+    }
+
+    private void sortVisible() {
+        if (sortByName) Collections.sort(visible, nameOrder);
+        sortDirty = false;
     }
 
     @Override
     public void updateScreen() {
+        if (sortDirty) sortVisible();
         search.updateCursorCounter();
         if (refreshTicks > 0) refreshTicks--;
         ((GuiButton) buttonList.get(0)).enabled = refreshTicks == 0;
@@ -128,6 +159,10 @@ public class GuiExportBusTerminal extends GuiScreen {
             refreshTicks = 20;
         } else if (button.id == 1) {
             BusHighlight.clear();
+        } else if (button.id == 2) {
+            sortByName = !sortByName;
+            button.displayString = tr(sortByName ? "sort.name" : "sort.distance");
+            filter();
         }
     }
 
@@ -136,7 +171,8 @@ public class GuiExportBusTerminal extends GuiScreen {
         drawDefaultBackground();
         drawRect(left, top, left + panelWidth, top + panelHeight, 0xF01A222A);
         drawRect(left, top, left + panelWidth, top + 3, 0xFF56D6BF);
-        fontRendererObj.drawString(tr("title"), left + 9, top + 11, 0xE3F6F1);
+        fontRendererObj
+            .drawString(fontRendererObj.trimStringToWidth(tr("title"), panelWidth - 182), left + 9, top + 11, 0xE3F6F1);
         search.drawTextBox();
         String status = StatCollector
             .translateToLocalFormatted("ae2exportterminal.gui.count", visible.size(), entries.size(), expected);
