@@ -9,7 +9,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.inventory.IInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
@@ -18,6 +17,8 @@ import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.util.ForgeDirection;
+
+import com.glodblock.github.common.item.ItemFluidPacket;
 
 import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
@@ -29,9 +30,15 @@ import appeng.api.networking.security.ISecurityGrid;
 import appeng.api.parts.IPart;
 import appeng.api.parts.IPartHost;
 import appeng.api.parts.SelectedPart;
+import appeng.api.storage.StorageName;
+import appeng.api.storage.data.IAEFluidStack;
+import appeng.api.storage.data.IAEItemStack;
+import appeng.api.storage.data.IAEStack;
 import appeng.core.worlddata.WorldData;
 import appeng.parts.automation.PartExportBus;
+import appeng.parts.automation.PartSharedItemBus;
 import appeng.parts.automation.PartUpgradeable;
+import appeng.tile.inventory.IAEStackInventory;
 import cpw.mods.fml.common.Loader;
 import dev.exportterminal.compat.FluidBusSupport;
 
@@ -177,12 +184,17 @@ public final class ScanService {
                         .name();
                 }
                 if (!fluidBus) entry.oreFilter = ((PartExportBus) bus).getFilter();
-                IInventory filters = bus.getInventoryByName("config");
+                IAEStackInventory filters = ((PartSharedItemBus<?>) bus).getAEInventoryByName(StorageName.CONFIG);
                 for (int i = 0; i < Math.min(9, filters.getSizeInventory()); i++) {
-                    ItemStack filter = filters.getStackInSlot(i);
-                    if (filter != null) {
-                        entry.filters[i] = filter.copy();
-                        entry.filters[i].stackSize = 1;
+                    IAEStack<?> filter = filters.getAEStackInSlot(i);
+                    if (filter instanceof IAEFluidStack) {
+                        entry.filters[i] = ItemFluidPacket.newDisplayStack(((IAEFluidStack) filter).getFluidStack());
+                    } else if (filter instanceof IAEItemStack) {
+                        ItemStack item = ((IAEItemStack) filter).getItemStack();
+                        if (item != null) {
+                            entry.filters[i] = item.copy();
+                            entry.filters[i].stackSize = 1;
+                        }
                     }
                 }
                 entries.add(entry);

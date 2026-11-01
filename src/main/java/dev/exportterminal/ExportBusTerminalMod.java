@@ -15,9 +15,9 @@ import cpw.mods.fml.common.registry.GameRegistry;
 @Mod(
     modid = ExportBusTerminalMod.MOD_ID,
     name = "AE2 Export Bus Terminal",
-    version = "1.0.0",
+    version = "1.1.0",
     acceptedMinecraftVersions = "[1.7.10]",
-    dependencies = "required-after:appliedenergistics2@[rv3-beta-695-GTNH];after:ae2fc@[1.4.120-gtnh]")
+    dependencies = "required-after:appliedenergistics2@[rv3-beta-1095-GTNH];after:ae2fc@[1.5.116-gtnh]")
 public class ExportBusTerminalMod {
 
     public static final String MOD_ID = "ae2exportterminal";
