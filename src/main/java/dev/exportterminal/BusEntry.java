@@ -11,6 +11,9 @@ public class BusEntry {
     public int side;
     public boolean online;
     public boolean fluidBus;
+    public String kind = "itembus";
+    public final String[] filterNames = new String[9];
+    public final boolean[] fluidFilters = new boolean[9];
     public int enabledSlots;
     public boolean craftingCard;
     public boolean redstoneCard;

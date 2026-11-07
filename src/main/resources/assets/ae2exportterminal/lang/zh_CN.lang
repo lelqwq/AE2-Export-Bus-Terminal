@@ -37,3 +37,7 @@ ae2exportterminal.gui.rs.IGNORE=忽略红石信号
 ae2exportterminal.gui.rs.HIGH_SIGNAL=有信号时工作
 ae2exportterminal.gui.rs.LOW_SIGNAL=无信号时工作
 ae2exportterminal.gui.rs.SIGNAL_PULSE=收到脉冲时工作
+
+ae2exportterminal.gui.universalbus=通用
+ae2exportterminal.gui.essentiabus=源质
+ae2exportterminal.gui.manabus=魔力

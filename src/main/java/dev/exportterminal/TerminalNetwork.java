@@ -95,13 +95,18 @@ public final class TerminalNetwork {
             buf.writeByte(entry.side);
             buf.writeBoolean(entry.online);
             buf.writeBoolean(entry.fluidBus);
+            ByteBufUtils.writeUTF8String(buf, entry.kind);
             buf.writeByte(entry.enabledSlots);
             buf.writeBoolean(entry.craftingCard);
             buf.writeBoolean(entry.redstoneCard);
             ByteBufUtils.writeUTF8String(buf, entry.redstoneMode);
             ByteBufUtils.writeUTF8String(buf, entry.fuzzyMode);
             ByteBufUtils.writeUTF8String(buf, entry.oreFilter);
-            for (int i = 0; i < 9; i++) ByteBufUtils.writeItemStack(buf, entry.filters[i]);
+            for (int i = 0; i < 9; i++) {
+                ByteBufUtils.writeItemStack(buf, entry.filters[i]);
+                buf.writeBoolean(entry.fluidFilters[i]);
+                ByteBufUtils.writeUTF8String(buf, entry.filterNames[i] == null ? "" : entry.filterNames[i]);
+            }
         }
 
         @Override
@@ -120,8 +125,9 @@ public final class TerminalNetwork {
             entry.side = buf.readUnsignedByte();
             entry.online = buf.readBoolean();
             entry.fluidBus = buf.readBoolean();
+            entry.kind = ByteBufUtils.readUTF8String(buf);
             entry.enabledSlots = buf.readUnsignedByte();
-            if (entry.side > 5 || entry.enabledSlots < 1 || entry.enabledSlots > 9) {
+            if (entry.side > 5 || entry.enabledSlots > 9) {
                 throw new IllegalArgumentException("Invalid bus side or capacity");
             }
             entry.craftingCard = buf.readBoolean();
@@ -129,7 +135,11 @@ public final class TerminalNetwork {
             entry.redstoneMode = ByteBufUtils.readUTF8String(buf);
             entry.fuzzyMode = ByteBufUtils.readUTF8String(buf);
             entry.oreFilter = ByteBufUtils.readUTF8String(buf);
-            for (int i = 0; i < 9; i++) entry.filters[i] = ByteBufUtils.readItemStack(buf);
+            for (int i = 0; i < 9; i++) {
+                entry.filters[i] = ByteBufUtils.readItemStack(buf);
+                entry.fluidFilters[i] = buf.readBoolean();
+                entry.filterNames[i] = ByteBufUtils.readUTF8String(buf);
+            }
         }
     }
 

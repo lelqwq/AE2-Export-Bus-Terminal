@@ -66,7 +66,7 @@ public class GuiExportBusTerminal extends GuiScreen {
         List<String> configuredNames = new ArrayList<>();
         StringBuilder text = new StringBuilder(entry.oreFilter);
         text.append(' ')
-            .append(tr(entry.fluidBus ? "fluidbus" : "itembus"));
+            .append(tr(entry.kind));
         text.append(' ')
             .append(entry.dimension)
             .append(' ')
@@ -75,16 +75,22 @@ public class GuiExportBusTerminal extends GuiScreen {
             .append(entry.y)
             .append(' ')
             .append(entry.z);
-        for (ItemStack stack : entry.filters) {
+        for (int slot = 0; slot < entry.filters.length; slot++) {
+            ItemStack stack = entry.filters[slot];
+            String filterName = entry.filterNames[slot];
+            if (filterName != null && !filterName.isEmpty()) {
+                configuredNames.add(filterName);
+                text.append(' ').append(filterName);
+            }
             if (stack != null) {
-                FluidStack configuredFluid = entry.fluidBus ? FluidFilters.fromPacket(stack) : null;
+                FluidStack configuredFluid = entry.fluidFilters[slot] ? FluidFilters.fromPacket(stack) : null;
                 configuredNames
                     .add(configuredFluid == null ? stack.getDisplayName() : configuredFluid.getLocalizedName());
                 text.append(' ')
                     .append(stack.getDisplayName())
                     .append(' ')
                     .append(Item.itemRegistry.getNameForObject(stack.getItem()));
-                if (entry.fluidBus) {
+                if (entry.fluidFilters[slot]) {
                     FluidStack fluid = FluidFilters.fromPacket(stack);
                     if (fluid != null) {
                         text.append(' ')
@@ -188,7 +194,7 @@ public class GuiExportBusTerminal extends GuiScreen {
                 && mouseY >= y
                 && mouseY < y + ROW_HEIGHT - 2;
             drawRect(left + 7, y, left + panelWidth - 7, y + ROW_HEIGHT - 2, hovered ? 0xFF344954 : 0xFF25343F);
-            String location = "[" + tr(entry.fluidBus ? "fluidbus" : "itembus")
+            String location = "[" + tr(entry.kind)
                 + "] D"
                 + entry.dimension
                 + "  "
@@ -205,13 +211,13 @@ public class GuiExportBusTerminal extends GuiScreen {
             String locate = tr("locate");
             fontRendererObj
                 .drawString(locate, left + panelWidth - 12 - fontRendererObj.getStringWidth(locate), y + 5, 0x70E5C5);
-            for (int slot = 0; slot < 9; slot++) {
+            for (int slot = 0; slot < (entry.kind.equals("manabus") ? 0 : 9); slot++) {
                 int x = left + 12 + slot * 18;
                 GL11.glDisable(GL11.GL_LIGHTING);
                 drawRect(x - 1, y + 20, x + 17, y + 38, 0xFF14212A);
                 ItemStack stack = entry.filters[slot];
                 if (stack != null) {
-                    FluidStack fluid = entry.fluidBus ? FluidFilters.fromPacket(stack) : null;
+                    FluidStack fluid = entry.fluidFilters[slot] ? FluidFilters.fromPacket(stack) : null;
                     if (fluid != null) {
                         drawFluid(fluid, x, y + 21);
                     } else {
@@ -220,6 +226,9 @@ public class GuiExportBusTerminal extends GuiScreen {
                             .renderItemAndEffectIntoGUI(fontRendererObj, mc.getTextureManager(), stack, x, y + 21);
                         RenderHelper.disableStandardItemLighting();
                     }
+                }
+                if (stack == null && entry.filterNames[slot] != null && !entry.filterNames[slot].isEmpty()) {
+                    fontRendererObj.drawString("?", x + 4, y + 25, 0xFFFFFF);
                 }
                 if (slot >= entry.enabledSlots) {
                     GL11.glDisable(GL11.GL_LIGHTING);
@@ -268,19 +277,24 @@ public class GuiExportBusTerminal extends GuiScreen {
         super.drawScreen(mouseX, mouseY, partialTicks);
         if (hoveredEntry != null) {
             List<String> tooltip = new ArrayList<>();
+            if (hoveredSlot >= 0 && hoveredEntry.filterNames[hoveredSlot] != null
+                && !hoveredEntry.filterNames[hoveredSlot].isEmpty()) {
+                tooltip.add(hoveredEntry.filterNames[hoveredSlot]);
+            }
             if (hoveredStack != null) {
                 tooltip.addAll(hoveredStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips));
-                FluidStack fluid = hoveredEntry.fluidBus ? FluidFilters.fromPacket(hoveredStack) : null;
+                FluidStack fluid = hoveredEntry.fluidFilters[hoveredSlot] ? FluidFilters.fromPacket(hoveredStack) : null;
                 if (fluid != null) tooltip.add(
                     "\u00a77" + fluid.getFluid()
                         .getName());
             }
-            tooltip.add("\u00a77" + tr(hoveredEntry.fluidBus ? "fluidbus" : "itembus"));
+            tooltip.add("\u00a77" + tr(hoveredEntry.kind));
             if (hoveredSlot >= hoveredEntry.enabledSlots) tooltip.add("\u00a7c" + tr("disabledslot"));
             tooltip.add(
                 "\u00a77" + tr("redstone")
                     + ": "
-                    + tr("rs." + (hoveredEntry.redstoneCard ? hoveredEntry.redstoneMode : "IGNORE")));
+                    + tr("rs." + (hoveredEntry.redstoneCard || hoveredEntry.kind.equals("manabus")
+                        ? hoveredEntry.redstoneMode : "IGNORE")));
             if (!hoveredEntry.fuzzyMode.isEmpty()) tooltip.add("\u00a77" + tr("fuzzy") + ": " + hoveredEntry.fuzzyMode);
             if (!hoveredEntry.oreFilter.isEmpty()) tooltip.add("\u00a77" + tr("ore") + ": " + hoveredEntry.oreFilter);
             tooltip.add("\u00a7b" + tr("clickhint"));

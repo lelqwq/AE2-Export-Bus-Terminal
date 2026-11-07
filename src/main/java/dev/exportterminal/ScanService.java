@@ -154,7 +154,8 @@ public final class ScanService {
         Set<PartUpgradeable> seen = Collections.newSetFromMap(new IdentityHashMap<PartUpgradeable, Boolean>());
         for (Class<? extends IGridHost> type : grid.getMachinesClasses()) {
             boolean fluidBus = Loader.isModLoaded("ae2fc") && FluidBusSupport.isExportBus(type);
-            if (!PartExportBus.class.isAssignableFrom(type) && !fluidBus) continue;
+            String kind = busKind(type, fluidBus);
+            if (kind == null) continue;
             for (IGridNode node : grid.getMachines(type)) {
                 PartUpgradeable bus = (PartUpgradeable) node.getMachine();
                 if (!seen.add(bus) || bus.getHost() == null) continue;
@@ -173,27 +174,42 @@ public final class ScanService {
                     .ordinal();
                 entry.online = node.isActive();
                 entry.fluidBus = fluidBus;
-                entry.enabledSlots = Math.min(9, 1 + bus.getInstalledUpgrades(Upgrades.CAPACITY) * 4);
+                entry.kind = kind;
+                entry.enabledSlots = kind.equals("manabus") ? 0 : Math.min(9, 1 + bus.getInstalledUpgrades(Upgrades.CAPACITY) * 4);
                 entry.craftingCard = bus.getInstalledUpgrades(Upgrades.CRAFTING) > 0;
                 entry.redstoneCard = bus.getInstalledUpgrades(Upgrades.REDSTONE) > 0;
                 entry.redstoneMode = bus.getRSMode()
                     .name();
-                if (!fluidBus && bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
+                if ((kind.equals("itembus") || kind.equals("universalbus")) && bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
                     entry.fuzzyMode = bus.getConfigManager()
                         .getSetting(Settings.FUZZY_MODE)
                         .name();
                 }
-                if (!fluidBus) entry.oreFilter = ((PartExportBus) bus).getFilter();
-                IAEStackInventory filters = ((PartSharedItemBus<?>) bus).getAEInventoryByName(StorageName.CONFIG);
-                for (int i = 0; i < Math.min(9, filters.getSizeInventory()); i++) {
-                    IAEStack<?> filter = filters.getAEStackInSlot(i);
-                    if (filter instanceof IAEFluidStack) {
-                        entry.filters[i] = ItemFluidPacket.newDisplayStack(((IAEFluidStack) filter).getFluidStack());
-                    } else if (filter instanceof IAEItemStack) {
-                        ItemStack item = ((IAEItemStack) filter).getItemStack();
-                        if (item != null) {
-                            entry.filters[i] = item.copy();
-                            entry.filters[i].stackSize = 1;
+                if (bus instanceof PartSharedItemBus<?>) {
+                    entry.oreFilter = ((PartSharedItemBus<?>) bus).getFilter();
+                    IAEStackInventory filters = ((PartSharedItemBus<?>) bus).getAEInventoryByName(StorageName.CONFIG);
+                    for (int i = 0; i < Math.min(9, filters.getSizeInventory()); i++) {
+                        IAEStack<?> filter = filters.getAEStackInSlot(i);
+                        if (filter instanceof IAEFluidStack) {
+                            if (Loader.isModLoaded("ae2fc")) {
+                                entry.fluidFilters[i] = true;
+                                entry.filters[i] = ItemFluidPacket.newDisplayStack(((IAEFluidStack) filter).getFluidStack());
+                            } else {
+                                entry.filterNames[i] = filter.getLocalizedName();
+                            }
+                        } else if (filter instanceof IAEItemStack) {
+                            ItemStack item = ((IAEItemStack) filter).getItemStack();
+                            if (item != null) {
+                                entry.filters[i] = item.copy();
+                                entry.filters[i].stackSize = 1;
+                            }
+                        } else if (filter != null) {
+                            entry.filterNames[i] = filter.getLocalizedName();
+                            ItemStack icon = filter.getItemStackForNEI();
+                            if (icon != null) {
+                                entry.filters[i] = icon.copy();
+                                entry.filters[i].stackSize = 1;
+                            }
                         }
                     }
                 }
@@ -226,6 +242,17 @@ public final class ScanService {
         for (BusEntry entry : entries) {
             TerminalNetwork.CHANNEL.sendTo(new TerminalNetwork.Result(session, entry), player);
         }
+    }
+
+    static String busKind(Class<?> type, boolean fluidBus) {
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            String name = current.getName();
+            if (name.equals("com.asdflj.ae2thing.common.parts.universal.PartUniversalExportBus")) return "universalbus";
+            if (name.equals("com.vcwdfca.appbot.part.PartManaExportBus")) return "manabus";
+            if (name.equals("thaumicenergistics.common.parts.PartEssentiaExportBus")) return "essentiabus";
+        }
+        if (fluidBus) return "fluidbus";
+        return PartExportBus.class.isAssignableFrom(type) ? "itembus" : null;
     }
 
     private static void tell(EntityPlayerMP player, String key) {

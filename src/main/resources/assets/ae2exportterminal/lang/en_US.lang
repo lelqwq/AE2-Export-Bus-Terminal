@@ -5,7 +5,7 @@ ae2exportterminal.tool.readonly=Read-only; click a result to highlight that expo
 ae2exportterminal.error.unbound=First right-click an ME cable or device with this tool to bind a network.
 ae2exportterminal.error.missing=The bound ME network is unloaded, dissolved or reformed. Load it or bind again. A legacy tool needs its old anchor loaded for its first upgrade.
 ae2exportterminal.error.permission=You need BUILD permission on this ME network to inspect bus configurations.
-ae2exportterminal.gui.title=ME Item/Fluid Export Buses - Configuration & Location
+ae2exportterminal.gui.title=ME Export Buses - Configuration & Location
 ae2exportterminal.gui.itembus=Item
 ae2exportterminal.gui.fluidbus=Fluid
 ae2exportterminal.gui.refresh=Refresh
@@ -37,3 +37,7 @@ ae2exportterminal.gui.rs.IGNORE=Ignore redstone
 ae2exportterminal.gui.rs.HIGH_SIGNAL=Active with signal
 ae2exportterminal.gui.rs.LOW_SIGNAL=Active without signal
 ae2exportterminal.gui.rs.SIGNAL_PULSE=Active on pulse
+
+ae2exportterminal.gui.universalbus=Universal
+ae2exportterminal.gui.essentiabus=Essentia
+ae2exportterminal.gui.manabus=Mana

@@ -44,6 +44,9 @@ public class TerminalNetworkTest {
         entry.redstoneMode = "LOW_SIGNAL";
         entry.fuzzyMode = "IGNORE_ALL";
         entry.oreFilter = "ingotIron | ingotCopper";
+        entry.kind = "universalbus";
+        entry.filterNames[2] = "Aer";
+        entry.fluidFilters[3] = true;
         ByteBuf wire = Unpooled.buffer();
         try {
             new TerminalNetwork.Result(43, entry).toBytes(wire);
@@ -65,6 +68,9 @@ public class TerminalNetworkTest {
             assertEquals(entry.redstoneMode, copy.redstoneMode);
             assertEquals(entry.fuzzyMode, copy.fuzzyMode);
             assertEquals(entry.oreFilter, copy.oreFilter);
+            assertEquals("universalbus", copy.kind);
+            assertEquals("Aer", copy.filterNames[2]);
+            assertTrue(copy.fluidFilters[3]);
             for (int slot = 0; slot < 9; slot++) assertNull(copy.filters[slot]);
             assertFalse(wire.isReadable());
         } finally {
@@ -84,8 +90,9 @@ public class TerminalNetworkTest {
                 .writeInt(0)
                 .writeByte(6)
                 .writeBoolean(false)
-                .writeBoolean(false)
-                .writeByte(9);
+                .writeBoolean(false);
+            cpw.mods.fml.common.network.ByteBufUtils.writeUTF8String(wire, "itembus");
+            wire.writeByte(9);
             new TerminalNetwork.Result().fromBytes(wire);
         } finally {
             wire.release();
@@ -107,6 +114,23 @@ public class TerminalNetworkTest {
             assertEquals(3, copy.entry.side);
             assertEquals(9, copy.entry.enabledSlots);
             assertFalse(wire.isReadable());
+        } finally {
+            wire.release();
+        }
+    }
+
+    @Test
+    public void manaBusHasNoFilterSlots() {
+        BusEntry entry = new BusEntry();
+        entry.kind = "manabus";
+        entry.side = 2;
+        ByteBuf wire = Unpooled.buffer();
+        try {
+            new TerminalNetwork.Result(45, entry).toBytes(wire);
+            TerminalNetwork.Result copy = new TerminalNetwork.Result();
+            copy.fromBytes(wire);
+            assertEquals("manabus", copy.entry.kind);
+            assertEquals(0, copy.entry.enabledSlots);
         } finally {
             wire.release();
         }

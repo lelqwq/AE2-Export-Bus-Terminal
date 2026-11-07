@@ -11,11 +11,13 @@
 | GTNH | 2.9.0 |
 | Applied Energistics 2 GTNH | rv3-beta-1095-GTNH（严格锁定） |
 | AE2 Fluid Crafting（流体总线支持） | 1.5.116-gtnh（GTNH 2.9.0 自带；可选集成） |
-| 本模组 | 1.1.0 |
+| 本模组 | 1.2.0 |
 
-将 `build/libs/ae2-export-bus-terminal-1.1.0.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
+构建后，将 `build/libs/ae2-export-bus-terminal-1.2.0.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
 
 无需替换 AE2，无需新增前置模组，无 Mixin 或 Coremod。拼音库 PinIn 及其必要依赖已内置并重定位，避免与整合包中的同名库冲突；AE2 和 Minecraft 不会打包进成品。
+
+客户端和服务端必须同时安装 1.2.0，旧版本与新版本的数据包不兼容。新增总线功能仍需游戏内验证；魔力总线没有过滤槽，显示其位置和在线状态。
 
 ## 使用
 
@@ -33,7 +35,7 @@
 ## 范围和行为
 
 - 只读查询，不修改总线、物品库存、过滤配置、红石模式或升级卡。
-- 列出 **AE2 物品 ME Export Bus**、**AE2 Fluid Crafting ME Fluid Export Bus** 及其子类；不列出 GT 的 ME 输出仓、接口或输入总线。不安装 AE2FC 时保留物品总线功能。
+- 列出 **AE2 物品输出总线**、**AE2 Fluid Crafting 流体输出总线**、**Thaumic Energistics 源质输出总线**，以及 **AE2Things 1.3.0 的通用和魔力输出总线**及其子类；不列出 GT 的 ME 输出仓、接口或输入总线。不安装 AE2FC 时保留物品总线功能。
 - 以 AE2 存档中的持久网络存储编号绑定同一个**逻辑 ME 网络**，支持跨维度查询、存档重载及原点击线缆的移除；不穿过存储总线/接口边界去递归扫描独立子网。需要时在子网重新绑定。
 - 扫描 AE2 当前已知且已加载的总线，不强制加载区块或维度。原点击点可以卸载，但绑定网络必须仍有已加载的实例；全部卸载时请先加载该网络。网络解散、分裂或合并可能更换原网络编号，此时需重新绑定。
 - 网络没有安全终端时可正常查询；有安全终端时遵守 AE2 的 **BUILD** 权限。
