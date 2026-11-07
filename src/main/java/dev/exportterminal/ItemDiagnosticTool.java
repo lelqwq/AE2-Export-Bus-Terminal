@@ -7,16 +7,15 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.tileentity.TileEntity;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.StatCollector;
 import net.minecraft.world.World;
 
-import appeng.api.networking.IGridHost;
-import appeng.api.parts.IPartHost;
+import appeng.api.features.INetworkEncodable;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-public class ItemDiagnosticTool extends Item {
+public class ItemDiagnosticTool extends Item implements INetworkEncodable {
 
     public ItemDiagnosticTool() {
         setUnlocalizedName(ExportBusTerminalMod.MOD_ID + ".diagnostic_tool");
@@ -26,22 +25,21 @@ public class ItemDiagnosticTool extends Item {
     }
 
     @Override
-    public boolean onItemUseFirst(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
-        float hitX, float hitY, float hitZ) {
-        // Returning true on the client would prevent Minecraft from sending its interaction packet.
-        if (world.isRemote) return false;
-        return onItemUse(stack, player, world, x, y, z, side, hitX, hitY, hitZ);
+    public String getEncryptionKey(ItemStack stack) {
+        if (!stack.hasTagCompound()) return "";
+        NBTTagCompound binding = stack.getTagCompound()
+            .getCompoundTag("ExportTerminalBinding");
+        return NetworkBinding.hasSecurityKey(binding) ? Long.toString(binding.getLong("securityKey")) : "";
     }
 
     @Override
-    public boolean onItemUse(ItemStack stack, EntityPlayer player, World world, int x, int y, int z, int side,
-        float hitX, float hitY, float hitZ) {
-        TileEntity tile = world.getTileEntity(x, y, z);
-        if (!(tile instanceof IGridHost) && !(tile instanceof IPartHost)) return false;
-        if (!world.isRemote && player instanceof EntityPlayerMP) {
-            ScanService.bindAndScan((EntityPlayerMP) player, stack, x, y, z, side, hitX, hitY, hitZ);
-        }
-        return true;
+    public void setEncryptionKey(ItemStack stack, String key, String name) {
+        long securityKey = Long.parseLong(key);
+        if (!stack.hasTagCompound()) stack.setTagCompound(new NBTTagCompound());
+        NBTTagCompound binding = new NBTTagCompound();
+        binding.setLong("securityKey", securityKey);
+        stack.getTagCompound()
+            .setTag("ExportTerminalBinding", binding);
     }
 
     @Override
@@ -53,14 +51,13 @@ public class ItemDiagnosticTool extends Item {
     }
 
     @Override
-    public boolean doesSneakBypassUse(World world, int x, int y, int z, EntityPlayer player) {
-        return true;
-    }
-
-    @Override
     @SideOnly(Side.CLIENT)
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void addInformation(ItemStack stack, EntityPlayer player, List lines, boolean advanced) {
+        boolean linked = !getEncryptionKey(stack).isEmpty();
+        lines.add(
+            (linked ? "\u00a7a" : "\u00a7c") + StatCollector
+                .translateToLocal(linked ? "ae2exportterminal.tool.linked" : "ae2exportterminal.tool.unlinked"));
         lines.add(StatCollector.translateToLocal("ae2exportterminal.tool.bind"));
         lines.add(StatCollector.translateToLocal("ae2exportterminal.tool.open"));
         lines.add(StatCollector.translateToLocal("ae2exportterminal.tool.readonly"));

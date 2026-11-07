@@ -1,11 +1,15 @@
 package dev.exportterminal;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -13,13 +17,10 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.Vec3;
-import net.minecraft.world.World;
-import net.minecraftforge.common.DimensionManager;
-import net.minecraftforge.common.util.ForgeDirection;
 
 import com.glodblock.github.common.item.ItemFluidPacket;
 
+import appeng.api.AEApi;
 import appeng.api.config.SecurityPermissions;
 import appeng.api.config.Settings;
 import appeng.api.config.Upgrades;
@@ -27,62 +28,47 @@ import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridHost;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.security.ISecurityGrid;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.api.parts.SelectedPart;
 import appeng.api.storage.StorageName;
 import appeng.api.storage.data.IAEFluidStack;
 import appeng.api.storage.data.IAEItemStack;
 import appeng.api.storage.data.IAEStack;
-import appeng.core.worlddata.WorldData;
 import appeng.parts.automation.PartExportBus;
 import appeng.parts.automation.PartSharedItemBus;
 import appeng.parts.automation.PartUpgradeable;
 import appeng.tile.inventory.IAEStackInventory;
 import cpw.mods.fml.common.Loader;
 import dev.exportterminal.compat.FluidBusSupport;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 
 public final class ScanService {
 
     private static final AtomicInteger SESSIONS = new AtomicInteger();
     private static final String BINDING = "ExportTerminalBinding";
+    private static final Map<UUID, Snapshot> SNAPSHOTS = new HashMap<>();
+
+    private static final class Snapshot {
+
+        int session;
+        long key;
+        List<byte[]> entries;
+    }
+
+    public static void forget(UUID player) {
+        SNAPSHOTS.remove(player);
+    }
+
+    public static void clear() {
+        SNAPSHOTS.clear();
+    }
 
     private ScanService() {}
 
-    public static void bindAndScan(EntityPlayerMP player, ItemStack stack, int x, int y, int z, int clickedSide,
-        float hitX, float hitY, float hitZ) {
-        TileEntity tile = player.worldObj.getTileEntity(x, y, z);
-        IGridNode node = null;
-        if (tile instanceof IPartHost) {
-            IPartHost host = (IPartHost) tile;
-            SelectedPart selected = host.selectPart(Vec3.createVectorHelper(hitX, hitY, hitZ));
-            if (selected.part != null && selected.part.getGridNode() != null) {
-                node = selected.part.getGridNode();
-            } else {
-                IPart cable = host.getPart(ForgeDirection.UNKNOWN);
-                if (cable != null) {
-                    node = cable.getGridNode();
-                }
-            }
-        }
-        if (node == null && tile instanceof IGridHost) {
-            node = ((IGridHost) tile).getGridNode(ForgeDirection.getOrientation(clickedSide));
-            if (node == null) node = ((IGridHost) tile).getGridNode(ForgeDirection.UNKNOWN);
-        }
-        IGrid grid = node == null ? null : node.getGrid();
-        if (!canRead(player, grid)) return;
-        if (!stack.hasTagCompound()) stack.setTagCompound(new NBTTagCompound());
-        NBTTagCompound binding = new NBTTagCompound();
-        if (!NetworkBinding.bind(binding, grid)) {
-            tell(player, "ae2exportterminal.error.missing");
-            return;
-        }
-        stack.getTagCompound()
-            .setTag(BINDING, binding);
-        scan(player, stack, grid);
+    public static void scanBound(EntityPlayerMP player) {
+        scanBound(player, 0);
     }
 
-    public static void scanBound(EntityPlayerMP player) {
+    public static void scanBound(EntityPlayerMP player, int previousSession) {
         ItemStack stack = player.getHeldItem();
         if (player.isDead || stack == null || stack.getItem() != ExportBusTerminalMod.tool) return;
         if (!stack.hasTagCompound() || !stack.getTagCompound()
@@ -92,43 +78,17 @@ public final class ScanService {
         }
         NBTTagCompound binding = stack.getTagCompound()
             .getCompoundTag(BINDING);
-        IGrid grid;
-        if (NetworkBinding.hasNetwork(binding)) {
-            grid = NetworkBinding.resolve(
-                binding,
-                WorldData.instance()
-                    .storageData());
-        } else {
-            // Migrate 0.1.0 tools through their old anchor once, even from another dimension.
-            IGridNode legacyNode = findLegacyNode(binding);
-            grid = legacyNode == null ? null : legacyNode.getGrid();
-        }
-        if (!canRead(player, grid)) return;
-        if (!NetworkBinding.hasNetwork(binding) && !NetworkBinding.bind(binding, grid)) {
-            tell(player, "ae2exportterminal.error.missing");
+        if (!NetworkBinding.hasSecurityKey(binding)) {
+            tell(player, "ae2exportterminal.error.rebind");
             return;
         }
-        scan(player, stack, grid);
-    }
-
-    private static IGridNode findLegacyNode(NBTTagCompound binding) {
-        int x = binding.getInteger("x");
-        int y = binding.getInteger("y");
-        int z = binding.getInteger("z");
-        World world = DimensionManager.getWorld(binding.getInteger("dim"));
-        if (world == null || !world.getChunkProvider()
-            .chunkExists(x >> 4, z >> 4)) return null;
-        TileEntity tile = world.getTileEntity(x, y, z);
-        IGridNode node = null;
-        int side = binding.getInteger("part");
-        if (side >= 0 && side <= 6 && tile instanceof IPartHost) {
-            IPart part = ((IPartHost) tile).getPart(ForgeDirection.getOrientation(side));
-            if (part != null) node = part.getGridNode();
-        } else if (side == -1 && tile instanceof IGridHost) {
-            node = ((IGridHost) tile).getGridNode(ForgeDirection.getOrientation(binding.getInteger("face")));
-            if (node == null) node = ((IGridHost) tile).getGridNode(ForgeDirection.UNKNOWN);
-        }
-        return node;
+        IGrid grid = NetworkBinding.resolve(
+            binding,
+            AEApi.instance()
+                .registries()
+                .locatable());
+        if (!canRead(player, grid)) return;
+        scan(player, stack, grid, previousSession, binding.getLong("securityKey"));
     }
 
     private static boolean canRead(EntityPlayerMP player, IGrid grid) {
@@ -144,7 +104,7 @@ public final class ScanService {
         return true;
     }
 
-    private static void scan(final EntityPlayerMP player, ItemStack stack, IGrid grid) {
+    private static void scan(final EntityPlayerMP player, ItemStack stack, IGrid grid, int previousSession, long key) {
         NBTTagCompound tag = stack.getTagCompound();
         long now = player.worldObj.getTotalWorldTime();
         long elapsed = now - tag.getLong("LastScan");
@@ -175,12 +135,14 @@ public final class ScanService {
                 entry.online = node.isActive();
                 entry.fluidBus = fluidBus;
                 entry.kind = kind;
-                entry.enabledSlots = kind.equals("manabus") ? 0 : Math.min(9, 1 + bus.getInstalledUpgrades(Upgrades.CAPACITY) * 4);
+                entry.enabledSlots = kind.equals("manabus") ? 0
+                    : Math.min(9, 1 + bus.getInstalledUpgrades(Upgrades.CAPACITY) * 4);
                 entry.craftingCard = bus.getInstalledUpgrades(Upgrades.CRAFTING) > 0;
                 entry.redstoneCard = bus.getInstalledUpgrades(Upgrades.REDSTONE) > 0;
                 entry.redstoneMode = bus.getRSMode()
                     .name();
-                if ((kind.equals("itembus") || kind.equals("universalbus")) && bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
+                if ((kind.equals("itembus") || kind.equals("universalbus"))
+                    && bus.getInstalledUpgrades(Upgrades.FUZZY) > 0) {
                     entry.fuzzyMode = bus.getConfigManager()
                         .getSetting(Settings.FUZZY_MODE)
                         .name();
@@ -193,7 +155,8 @@ public final class ScanService {
                         if (filter instanceof IAEFluidStack) {
                             if (Loader.isModLoaded("ae2fc")) {
                                 entry.fluidFilters[i] = true;
-                                entry.filters[i] = ItemFluidPacket.newDisplayStack(((IAEFluidStack) filter).getFluidStack());
+                                entry.filters[i] = ItemFluidPacket
+                                    .newDisplayStack(((IAEFluidStack) filter).getFluidStack());
                             } else {
                                 entry.filterNames[i] = filter.getLocalizedName();
                             }
@@ -238,10 +201,39 @@ public final class ScanService {
             }
         });
         int session = SESSIONS.incrementAndGet();
-        TerminalNetwork.CHANNEL.sendTo(new TerminalNetwork.Result(session, entries.size()), player);
-        for (BusEntry entry : entries) {
-            TerminalNetwork.CHANNEL.sendTo(new TerminalNetwork.Result(session, entry), player);
+        Snapshot old = SNAPSHOTS.get(player.getUniqueID());
+        boolean delta = previousSession != 0 && old != null && old.session == previousSession && old.key == key;
+        List<byte[]> encoded = new ArrayList<>();
+        for (int i = 0; i < entries.size(); i++) {
+            ByteBuf buffer = Unpooled.buffer();
+            byte[] bytes;
+            try {
+                new TerminalNetwork.Result(0, 0, entries.get(i)).toBytes(buffer);
+                bytes = new byte[buffer.readableBytes()];
+                buffer.readBytes(bytes);
+            } finally {
+                buffer.release();
+            }
+            encoded.add(bytes);
         }
+        List<Integer> changed = changedIndices(delta ? old.entries : Collections.<byte[]>emptyList(), encoded);
+        Snapshot snapshot = new Snapshot();
+        snapshot.session = session;
+        snapshot.key = key;
+        snapshot.entries = encoded;
+        SNAPSHOTS.put(player.getUniqueID(), snapshot);
+        TerminalNetwork.CHANNEL
+            .sendTo(new TerminalNetwork.Result(session, entries.size(), changed.size(), delta), player);
+        for (int index : changed)
+            TerminalNetwork.CHANNEL.sendTo(new TerminalNetwork.Result(session, index, entries.get(index)), player);
+    }
+
+    static List<Integer> changedIndices(List<byte[]> previous, List<byte[]> current) {
+        List<Integer> changed = new ArrayList<>();
+        for (int i = 0; i < current.size(); i++) {
+            if (i >= previous.size() || !Arrays.equals(current.get(i), previous.get(i))) changed.add(i);
+        }
+        return changed;
     }
 
     static String busKind(Class<?> type, boolean fluidBus) {

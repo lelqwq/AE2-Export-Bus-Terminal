@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 
 public class CommonProxy {
@@ -33,4 +34,9 @@ public class CommonProxy {
     }
 
     public void receive(TerminalNetwork.Result packet) {}
+
+    @SubscribeEvent
+    public void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        ScanService.forget(event.player.getUniqueID());
+    }
 }

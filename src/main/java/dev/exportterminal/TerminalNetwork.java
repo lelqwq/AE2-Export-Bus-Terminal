@@ -29,11 +29,23 @@ public final class TerminalNetwork {
 
     public static class Refresh implements IMessage {
 
-        @Override
-        public void fromBytes(ByteBuf buf) {}
+        public int previousSession;
+
+        public Refresh() {}
+
+        public Refresh(int previousSession) {
+            this.previousSession = previousSession;
+        }
 
         @Override
-        public void toBytes(ByteBuf buf) {}
+        public void fromBytes(ByteBuf buf) {
+            previousSession = buf.readInt();
+        }
+
+        @Override
+        public void toBytes(ByteBuf buf) {
+            buf.writeInt(previousSession);
+        }
     }
 
     public static class RefreshHandler implements IMessageHandler<Refresh, IMessage> {
@@ -52,7 +64,7 @@ public final class TerminalNetwork {
                     try {
                         if (player.playerNetServerHandler == null
                             || !player.playerNetServerHandler.netManager.isChannelOpen()) return;
-                        ScanService.scanBound(player);
+                        ScanService.scanBound(player, message.previousSession);
                     } finally {
                         PENDING.remove(id);
                     }
@@ -67,17 +79,33 @@ public final class TerminalNetwork {
         public int session;
         public int total;
         public BusEntry entry;
+        public int index;
+        public int changes;
+        public boolean delta;
 
         public Result() {}
 
         public Result(int session, int total) {
             this.session = session;
             this.total = total;
+            this.changes = total;
+        }
+
+        public Result(int session, int total, int changes, boolean delta) {
+            this.session = session;
+            this.total = total;
+            this.changes = changes;
+            this.delta = delta;
         }
 
         public Result(int session, BusEntry entry) {
             this.session = session;
             this.entry = entry;
+        }
+
+        public Result(int session, int index, BusEntry entry) {
+            this(session, entry);
+            this.index = index;
         }
 
         @Override
@@ -86,8 +114,11 @@ public final class TerminalNetwork {
             buf.writeBoolean(entry != null);
             if (entry == null) {
                 buf.writeInt(total);
+                buf.writeInt(changes);
+                buf.writeBoolean(delta);
                 return;
             }
+            buf.writeInt(index);
             buf.writeInt(entry.dimension);
             buf.writeInt(entry.x);
             buf.writeInt(entry.y);
@@ -114,9 +145,14 @@ public final class TerminalNetwork {
             session = buf.readInt();
             if (!buf.readBoolean()) {
                 total = buf.readInt();
-                if (total < 0) throw new IllegalArgumentException("Negative bus count");
+                changes = buf.readInt();
+                delta = buf.readBoolean();
+                if (total < 0 || changes < 0 || changes > total || (!delta && changes != total))
+                    throw new IllegalArgumentException("Invalid bus count");
                 return;
             }
+            index = buf.readInt();
+            if (index < 0) throw new IllegalArgumentException("Invalid bus index");
             entry = new BusEntry();
             entry.dimension = buf.readInt();
             entry.x = buf.readInt();

@@ -50,9 +50,9 @@ public class ClientProxy extends CommonProxy {
                 } else {
                     terminal = (GuiExportBusTerminal) minecraft.currentScreen;
                 }
-                terminal.begin(packet.session, packet.total);
-            } else if (terminal != null) {
-                terminal.accept(packet.session, packet.entry);
+                terminal.begin(packet.session, packet.total, packet.changes, packet.delta);
+            } else if (terminal != null && minecraft.currentScreen == terminal) {
+                terminal.accept(packet.session, packet.index, packet.entry);
             }
         }
     }

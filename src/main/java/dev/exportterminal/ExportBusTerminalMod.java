@@ -10,12 +10,14 @@ import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 
 @Mod(
     modid = ExportBusTerminalMod.MOD_ID,
     name = "AE2 Export Bus Terminal",
-    version = "1.2.0",
+    version = "1.2.1",
+    acceptableRemoteVersions = "[1.2.1]",
     acceptedMinecraftVersions = "[1.7.10]",
     dependencies = "required-after:appliedenergistics2@[rv3-beta-1095-GTNH];after:ae2fc@[1.5.116-gtnh]")
 public class ExportBusTerminalMod {
@@ -25,6 +27,11 @@ public class ExportBusTerminalMod {
 
     @SidedProxy(clientSide = "dev.exportterminal.client.ClientProxy", serverSide = "dev.exportterminal.CommonProxy")
     public static CommonProxy proxy;
+
+    @EventHandler
+    public void stopped(FMLServerStoppedEvent event) {
+        ScanService.clear();
+    }
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {

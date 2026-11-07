@@ -6,12 +6,25 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
+
 import org.junit.Test;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 public class TerminalNetworkTest {
+
+    @Test
+    public void incrementalComparisonHandlesEditsReorderingAndRemoval() {
+        byte[] a = { 1 }, b = { 2 }, c = { 3 };
+        assertEquals(Arrays.asList(1), ScanService.changedIndices(Arrays.asList(a, b), Arrays.asList(a, c)));
+        assertEquals(Arrays.asList(0, 1), ScanService.changedIndices(Arrays.asList(a, b), Arrays.asList(b, a)));
+        assertTrue(
+            ScanService.changedIndices(Arrays.asList(a, b), Arrays.asList(a))
+                .isEmpty());
+        assertEquals(Arrays.asList(1), ScanService.changedIndices(Arrays.asList(a), Arrays.asList(a, b)));
+    }
 
     @Test
     public void emptyNetworkStillStartsACompleteSnapshot() {
@@ -86,6 +99,7 @@ public class TerminalNetworkTest {
                 .writeBoolean(true)
                 .writeInt(0)
                 .writeInt(0)
+                .writeInt(0)
                 .writeInt(64)
                 .writeInt(0)
                 .writeByte(6)
@@ -94,6 +108,27 @@ public class TerminalNetworkTest {
             cpw.mods.fml.common.network.ByteBufUtils.writeUTF8String(wire, "itembus");
             wire.writeByte(9);
             new TerminalNetwork.Result().fromBytes(wire);
+        } finally {
+            wire.release();
+        }
+    }
+
+    @Test
+    public void incrementalHeaderAndIndexedEntryRoundTrip() {
+        ByteBuf wire = Unpooled.buffer();
+        try {
+            new TerminalNetwork.Result(3, 5, 1, true).toBytes(wire);
+            TerminalNetwork.Result header = new TerminalNetwork.Result();
+            header.fromBytes(wire);
+            assertTrue(header.delta);
+            assertEquals(5, header.total);
+            assertEquals(1, header.changes);
+            BusEntry entry = new BusEntry();
+            new TerminalNetwork.Result(3, 4, entry).toBytes(wire);
+            TerminalNetwork.Result update = new TerminalNetwork.Result();
+            update.fromBytes(wire);
+            assertEquals(4, update.index);
+            assertFalse(wire.isReadable());
         } finally {
             wire.release();
         }

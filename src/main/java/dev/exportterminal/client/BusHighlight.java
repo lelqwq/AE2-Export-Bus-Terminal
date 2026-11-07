@@ -22,7 +22,7 @@ public class BusHighlight {
 
     public static void select(BusEntry entry) {
         selected = entry;
-        expiresAt = System.currentTimeMillis() + 300000L;
+        expiresAt = System.currentTimeMillis() + 60000L;
     }
 
     public static void clear() {

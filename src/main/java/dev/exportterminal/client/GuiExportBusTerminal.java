@@ -1,6 +1,7 @@
 package dev.exportterminal.client;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -30,6 +31,9 @@ public class GuiExportBusTerminal extends GuiScreen {
 
     private static final int ROW_HEIGHT = 46;
     private static boolean sortByName = true;
+    private static final String[] BUS_TYPES = { "all", "itembus", "fluidbus", "universalbus", "essentiabus",
+        "manabus" };
+    private static int selectedType;
     private final List<BusEntry> entries = new ArrayList<>();
     private final List<String> searchTexts = new ArrayList<>();
     private final List<BusEntry> visible = new ArrayList<>();
@@ -46,22 +50,48 @@ public class GuiExportBusTerminal extends GuiScreen {
     private String query = "";
     private BusNameOrder nameOrder;
     private boolean sortDirty;
+    private List<BusEntry> pending;
+    private BitSet received;
+    private int changesRemaining;
 
-    public void begin(int session, int total) {
+    public void begin(int session, int total, int changes, boolean delta) {
         this.session = session;
         expected = total;
+        pending = new ArrayList<>(delta ? entries : Collections.<BusEntry>emptyList());
+        while (pending.size() > total) pending.remove(pending.size() - 1);
+        while (pending.size() < total) pending.add(null);
+        received = new BitSet(total);
+        changesRemaining = changes;
+        if (changes == 0) finishSnapshot();
+    }
+
+    public void accept(int session, int index, BusEntry entry) {
+        if (this.session != session || pending == null || index < 0 || index >= expected || received.get(index)) return;
+        pending.set(index, entry);
+        received.set(index);
+        if (--changesRemaining == 0) finishSnapshot();
+    }
+
+    private void finishSnapshot() {
+        if (pending.contains(null)) {
+            pending = null;
+            session = 0;
+            return;
+        }
+        List<BusEntry> complete = pending;
+        pending = null;
         entries.clear();
         searchTexts.clear();
         visible.clear();
         nameOrder = new BusNameOrder(
             mc.thePlayer.dimension,
             Locale.forLanguageTag(mc.gameSettings.language.replace('_', '-')));
-        sortDirty = false;
         scroll = 0;
+        for (BusEntry entry : complete) addEntry(entry);
+        sortVisible();
     }
 
-    public void accept(int session, BusEntry entry) {
-        if (this.session != session || entries.size() >= expected) return;
+    private void addEntry(BusEntry entry) {
         entries.add(entry);
         List<String> configuredNames = new ArrayList<>();
         StringBuilder text = new StringBuilder(entry.oreFilter);
@@ -80,7 +110,8 @@ public class GuiExportBusTerminal extends GuiScreen {
             String filterName = entry.filterNames[slot];
             if (filterName != null && !filterName.isEmpty()) {
                 configuredNames.add(filterName);
-                text.append(' ').append(filterName);
+                text.append(' ')
+                    .append(filterName);
             }
             if (stack != null) {
                 FluidStack configuredFluid = entry.fluidFilters[slot] ? FluidFilters.fromPacket(stack) : null;
@@ -106,7 +137,7 @@ public class GuiExportBusTerminal extends GuiScreen {
         String searchable = text.toString();
         searchTexts.add(searchable);
         nameOrder.setNames(entry, configuredNames);
-        if (ItemSearch.matches(searchable, query)) visible.add(entry);
+        if (matches(entry, searchable)) visible.add(entry);
         sortDirty = true;
     }
 
@@ -117,11 +148,11 @@ public class GuiExportBusTerminal extends GuiScreen {
         panelHeight = Math.min(364, height - 24);
         left = (width - panelWidth) / 2;
         top = (height - panelHeight) / 2;
-        rowCount = Math.max(1, (panelHeight - 103) / ROW_HEIGHT);
+        rowCount = Math.max(1, (panelHeight - 125) / ROW_HEIGHT);
         search = new GuiTextField(fontRendererObj, left + 9, top + 28, panelWidth - 201, 18);
         search.setMaxStringLength(128);
         search.setText(query);
-        search.setFocused(true);
+        search.setFocused(false);
         buttonList.clear();
         buttonList.add(new GuiButton(0, left + panelWidth - 184, top + 27, 68, 20, tr("refresh")));
         buttonList.add(new GuiButton(1, left + panelWidth - 112, top + 27, 103, 20, tr("clear")));
@@ -133,13 +164,22 @@ public class GuiExportBusTerminal extends GuiScreen {
                 155,
                 20,
                 tr(sortByName ? "sort.name" : "sort.distance")));
+        buttonList.add(new GuiButton(3, left + panelWidth - 164, top + 50, 155, 20, typeLabel()));
+    }
+
+    private static String typeLabel() {
+        return tr("type") + ": " + tr(BUS_TYPES[selectedType]);
+    }
+
+    private boolean matches(BusEntry entry, String text) {
+        return (selectedType == 0 || BUS_TYPES[selectedType].equals(entry.kind)) && ItemSearch.matches(text, query);
     }
 
     private void filter() {
         query = search.getText();
         visible.clear();
         for (int i = 0; i < entries.size(); i++) {
-            if (ItemSearch.matches(searchTexts.get(i), query)) visible.add(entries.get(i));
+            if (matches(entries.get(i), searchTexts.get(i))) visible.add(entries.get(i));
         }
         scroll = 0;
         sortVisible();
@@ -155,13 +195,13 @@ public class GuiExportBusTerminal extends GuiScreen {
         if (sortDirty) sortVisible();
         search.updateCursorCounter();
         if (refreshTicks > 0) refreshTicks--;
-        ((GuiButton) buttonList.get(0)).enabled = refreshTicks == 0;
+        ((GuiButton) buttonList.get(0)).enabled = refreshTicks == 0 && pending == null;
     }
 
     @Override
     protected void actionPerformed(GuiButton button) {
         if (button.id == 0) {
-            TerminalNetwork.CHANNEL.sendToServer(new TerminalNetwork.Refresh());
+            TerminalNetwork.CHANNEL.sendToServer(new TerminalNetwork.Refresh(session));
             refreshTicks = 20;
         } else if (button.id == 1) {
             BusHighlight.clear();
@@ -169,7 +209,15 @@ public class GuiExportBusTerminal extends GuiScreen {
             sortByName = !sortByName;
             button.displayString = tr(sortByName ? "sort.name" : "sort.distance");
             filter();
+        } else if (button.id == 3) {
+            cycleType(1);
         }
+    }
+
+    private void cycleType(int direction) {
+        selectedType = (selectedType + direction + BUS_TYPES.length) % BUS_TYPES.length;
+        ((GuiButton) buttonList.get(3)).displayString = typeLabel();
+        filter();
     }
 
     @Override
@@ -182,8 +230,9 @@ public class GuiExportBusTerminal extends GuiScreen {
         search.drawTextBox();
         String status = StatCollector
             .translateToLocalFormatted("ae2exportterminal.gui.count", visible.size(), entries.size(), expected);
-        fontRendererObj.drawString(status, left + 9, top + 54, 0x9DB4C3);
-        int listTop = top + 68;
+        fontRendererObj
+            .drawString(fontRendererObj.trimStringToWidth(status, panelWidth - 180), left + 9, top + 56, 0x9DB4C3);
+        int listTop = top + 90;
         ItemStack hoveredStack = null;
         BusEntry hoveredEntry = null;
         int hoveredSlot = -1;
@@ -283,7 +332,8 @@ public class GuiExportBusTerminal extends GuiScreen {
             }
             if (hoveredStack != null) {
                 tooltip.addAll(hoveredStack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips));
-                FluidStack fluid = hoveredEntry.fluidFilters[hoveredSlot] ? FluidFilters.fromPacket(hoveredStack) : null;
+                FluidStack fluid = hoveredEntry.fluidFilters[hoveredSlot] ? FluidFilters.fromPacket(hoveredStack)
+                    : null;
                 if (fluid != null) tooltip.add(
                     "\u00a77" + fluid.getFluid()
                         .getName());
@@ -293,8 +343,10 @@ public class GuiExportBusTerminal extends GuiScreen {
             tooltip.add(
                 "\u00a77" + tr("redstone")
                     + ": "
-                    + tr("rs." + (hoveredEntry.redstoneCard || hoveredEntry.kind.equals("manabus")
-                        ? hoveredEntry.redstoneMode : "IGNORE")));
+                    + tr(
+                        "rs." + (hoveredEntry.redstoneCard || hoveredEntry.kind.equals("manabus")
+                            ? hoveredEntry.redstoneMode
+                            : "IGNORE")));
             if (!hoveredEntry.fuzzyMode.isEmpty()) tooltip.add("\u00a77" + tr("fuzzy") + ": " + hoveredEntry.fuzzyMode);
             if (!hoveredEntry.oreFilter.isEmpty()) tooltip.add("\u00a77" + tr("ore") + ": " + hoveredEntry.oreFilter);
             tooltip.add("\u00a7b" + tr("clickhint"));
@@ -306,8 +358,16 @@ public class GuiExportBusTerminal extends GuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int button) {
         super.mouseClicked(mouseX, mouseY, button);
         search.mouseClicked(mouseX, mouseY, button);
+        if (button == 1 && mouseX >= left + panelWidth - 164
+            && mouseX < left + panelWidth - 9
+            && mouseY >= top + 50
+            && mouseY < top + 70) {
+            ((GuiButton) buttonList.get(3)).func_146113_a(mc.getSoundHandler());
+            cycleType(-1);
+            return;
+        }
         if (button != 0 || mouseX < left + 7 || mouseX >= left + panelWidth - 7) return;
-        int relative = mouseY - top - 68;
+        int relative = mouseY - top - 90;
         if (relative < 0 || relative >= rowCount * ROW_HEIGHT) return;
         int index = scroll + relative / ROW_HEIGHT;
         if (index < visible.size() && relative % ROW_HEIGHT < ROW_HEIGHT - 2) {
@@ -341,7 +401,8 @@ public class GuiExportBusTerminal extends GuiScreen {
 
     @Override
     protected void keyTyped(char character, int key) {
-        if (key == Keyboard.KEY_ESCAPE) {
+        if (key == Keyboard.KEY_ESCAPE
+            || (key == mc.gameSettings.keyBindInventory.getKeyCode() && !search.isFocused())) {
             mc.displayGuiScreen(null);
             return;
         }

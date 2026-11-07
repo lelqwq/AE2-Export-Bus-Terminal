@@ -1,9 +1,9 @@
 item.ae2exportterminal.diagnostic_tool.name=ME Export Bus Diagnostic Tool
-ae2exportterminal.tool.bind=Right-click an ME cable or device to bind and scan
+ae2exportterminal.tool.bind=Bind in the ME Security Terminal wireless slot
 ae2exportterminal.tool.open=Right-click air to open and refresh the bound network
 ae2exportterminal.tool.readonly=Read-only; click a result to highlight that export bus
-ae2exportterminal.error.unbound=First right-click an ME cable or device with this tool to bind a network.
-ae2exportterminal.error.missing=The bound ME network is unloaded, dissolved or reformed. Load it or bind again. A legacy tool needs its old anchor loaded for its first upgrade.
+ae2exportterminal.error.unbound=First bind this tool in an ME Security Terminal.
+ae2exportterminal.error.missing=Cannot find the bound ME Security Terminal or its network. Load it, or bind again if it was replaced.
 ae2exportterminal.error.permission=You need BUILD permission on this ME network to inspect bus configurations.
 ae2exportterminal.gui.title=ME Export Buses - Configuration & Location
 ae2exportterminal.gui.itembus=Item
@@ -25,7 +25,7 @@ ae2exportterminal.gui.loading=Receiving export bus configurations...
 ae2exportterminal.gui.empty=No matching export buses.
 ae2exportterminal.gui.hint=Search item/fluid names, Pinyin, initials or IDs. Scroll; click to locate.
 ae2exportterminal.gui.snapshot=Manual snapshot. Online does not mean exporting. Dark slots are disabled.
-ae2exportterminal.gui.clickhint=Click row: close and highlight the bus face for 5 minutes
+ae2exportterminal.gui.clickhint=Click row: close and highlight the bus face for 1 minute
 ae2exportterminal.gui.otherdimension=Target is in another dimension. Travel there to see its outline.
 ae2exportterminal.gui.side.0=Down
 ae2exportterminal.gui.side.1=Up
@@ -41,3 +41,13 @@ ae2exportterminal.gui.rs.SIGNAL_PULSE=Active on pulse
 ae2exportterminal.gui.universalbus=Universal
 ae2exportterminal.gui.essentiabus=Essentia
 ae2exportterminal.gui.manabus=Mana
+
+ae2exportterminal.error.security_station=Connect exactly one ME Security Terminal to this network before binding.
+ae2exportterminal.error.rebind=The binding format changed. Bind again in an ME Security Terminal.
+
+
+
+ae2exportterminal.tool.linked=Linked
+ae2exportterminal.tool.unlinked=Unlinked
+ae2exportterminal.gui.type=Type
+ae2exportterminal.gui.all=All
