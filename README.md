@@ -1,6 +1,6 @@
 # AE2 Export Bus Terminal / ME 输出总线诊断器
 
-针对 **GTNH 2.9.0** 的独立 AE2 附属模组。集中查看当前 ME 网络的物品和流体输出总线配置，按物品/流体搜索，并在世界中高亮具体总线的安装面。
+针对 **GTNH 2.9.1** 的独立 AE2 附属模组。集中查看当前 ME 网络的物品和流体输出总线配置，按物品/流体搜索，并在世界中高亮具体总线的安装面。
 
 ## 版本与安装
 
@@ -8,16 +8,16 @@
 | --- | --- |
 | Minecraft | 1.7.10 |
 | Forge | 10.13.4.1614 |
-| GTNH | 2.9.0 |
-| Applied Energistics 2 GTNH | rv3-beta-1095-GTNH（严格锁定） |
-| AE2 Fluid Crafting（流体总线支持） | 1.5.116-gtnh（GTNH 2.9.0 自带；可选集成） |
-| 本模组 | 1.2.1 |
+| GTNH | 2.9.1 |
+| Applied Energistics 2 GTNH | rv3-beta-1104-GTNH（严格锁定） |
+| AE2 Fluid Crafting（流体总线支持） | 1.6.0-gtnh（GTNH 2.9.1 自带；可选集成） |
+| 本模组 | 1.3.0 |
 
-构建后，将 `build/libs/ae2-export-bus-terminal-1.2.1.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
+构建后，将 `build/libs/ae2-export-bus-terminal-1.3.0.jar` 同时放入客户端、服务端的 `mods` 文件夹，并移除旧版本 JAR。单人游戏只需装到当前实例。不要安装 `-sources.jar`、`-dev.jar` 或 `-dev-preshadow.jar`。
 
 无需替换 AE2，无需新增前置模组，无 Mixin 或 Coremod。拼音库 PinIn 及其必要依赖已内置并重定位，避免与整合包中的同名库冲突；AE2 和 Minecraft 不会打包进成品。
 
-客户端和服务端必须同时安装 1.2.1，旧版本与新版本的数据包不兼容。新增总线功能仍需游戏内验证；魔力总线没有过滤槽，显示其位置和在线状态。
+客户端和服务端必须同时安装 1.3.0，旧版本与新版本的数据包不兼容。新增总线功能仍需游戏内验证；魔力总线没有过滤槽，显示其位置和在线状态。
 
 ## 使用
 
@@ -62,13 +62,13 @@ Gradle 使用 JDK 17+ 运行（建议 JDK 25），插件会选择/下载 Java 8 
 
 自动化测试覆盖搜索、网络绑定解析、定位边界、快照协议、流体兼容及排序。
 
-1.1.0 针对 GTNH 2.9.0 的接口变更进行了适配，尚待在实际游戏中验收，特别是物品和流体过滤槽、跨维度查询与多人环境。1.0.0 曾由用户在 GTNH 2.8.4 中测试。
+1.3.0 针对 GTNH 2.9.1 的接口版本进行适配，尚待在实际游戏中验收，特别是物品和流体过滤槽、跨维度查询与多人环境。1.1.0 曾针对 GTNH 2.9.0 适配，1.0.0 曾由用户在 GTNH 2.8.4 中测试。
 
 ## 上游参考
 
-- [GTNH 2.9.0 官方模组清单](https://github.com/GTNewHorizons/DreamAssemblerXXL/blob/master/releases/manifests/2.9.0.json)
-- [对应版本 AE2 源码](https://github.com/GTNewHorizons/Applied-Energistics-2-Unofficial/tree/rv3-beta-1095-GTNH)
-- [对应版本 AE2 Fluid Crafting 源码](https://github.com/GTNewHorizons/AE2FluidCraft-Rework/tree/1.5.116-gtnh)，开发 JAR 从该版本 GitHub Releases 获取，不随本模组打包。
+- [GTNH 2.9.1 官方模组清单](https://github.com/GTNewHorizons/DreamAssemblerXXL/blob/master/releases/manifests/2.9.1.json)
+- [对应版本 AE2 源码](https://github.com/GTNewHorizons/Applied-Energistics-2-Unofficial/tree/rv3-beta-1104-GTNH)
+- [对应版本 AE2 Fluid Crafting 源码](https://github.com/GTNewHorizons/AE2FluidCraft-Rework/tree/1.6.0-gtnh)，开发 JAR 从该版本 GitHub Releases 获取，不随本模组打包。
 - 构建包装器来自 [GTNH ExampleMod1.7.10](https://github.com/GTNewHorizons/ExampleMod1.7.10)。
 - 拼音匹配：[PinIn 1.6.0](https://github.com/Towdium/PinIn/tree/1.6.0)，与 GTNH NotEnoughCharacters 采用的拼音核心相同。依赖许可证见 `THIRD_PARTY_NOTICES.md` 和成品中的 `META-INF/licenses/`。
 

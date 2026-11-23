@@ -1,3 +1,12 @@
+# Build status — 1.3.0 — 2026-11-23
+
+- Target: GTNH 2.9.1 / Minecraft 1.7.10 / Forge 10.13.4.1614 / AE2 rv3-beta-1104-GTNH.
+- Fluid integration: AE2 Fluid Crafting 1.6.0-gtnh, included in GTNH 2.9.1.
+- `gradlew test build` with JDK 25: PASS — tests, Spotless and Checkstyle.
+- Built JAR dependency string and mcmod.info confirmed for GTNH 2.9.1 / AE2 1104 / AE2FC 1.6.0.
+
+---
+
 # Build status — 1.0.0 — 2026-10-25
 
 - Target: GTNH 2.8.4 / Minecraft 1.7.10 / Forge 10.13.4.1614 / AE2 rv3-beta-695-GTNH.
